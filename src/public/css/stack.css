@@ -1,0 +1,77 @@
+/* svg [fill='#fff'],
+svg [fill='#FFF'],
+svg [fill='#ffffff'],
+svg [fill='#FFFFFF'] {
+  fill: var(--surface) !important;
+}
+
+svg [fill='#dbe2e3'],
+svg [fill='#DBE2E3'] {
+  fill: var(--surface-2) !important;
+}
+
+svg [fill='#f2f2f2'],
+svg [fill='#F2F2F2'] {
+  fill: var(--surface) !important;
+}
+
+/* svg * {
+  stroke: var(--text) !important;
+} */
+
+svg [inkscape\:label='bg'] {
+  fill: var(--surface) !important;
+  stroke: var(--border) !important;
+}
+
+svg [inkscape\:label='bg1'] {
+  fill: var(--surface-2) !important;
+  stroke: var(--border) !important;
+}
+
+svg [inkscape\:label='fillo'] {
+  fill: var(--text) !important;
+}
+
+svg [inkscape\:label='text'] {
+  fill: var(--text) !important;
+  stroke: var(--text) !important;
+}
+
+svg [inkscape\:label='path'] {
+  opacity: 0;
+  stroke: var(--muted) !important;
+}
+
+.stack-tooltip {
+  /* layout */
+  max-width: 200px;
+  padding: 12px 14px;
+  border-radius: 14px;
+
+  /* theme via your CSS vars */
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+
+  /* depth */
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.18);
+
+  /* behavior */
+  z-index: 50;
+}
+
+.stack-tooltip h3 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.stack-tooltip p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+}

@@ -1,0 +1,96 @@
+<section class="space-y-6">
+  <div
+    class="mx-auto w-full max-w-4xl max-h-[70vh] aspect-[501.16/354.37] overflow-hidden"
+  >
+    <%- include('../partials/stack') %>
+  </div>
+  <div id="stack-btns" class="">
+    <div
+      class="flex justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-sm"
+    >
+      buttons
+    </div>
+  </div>
+  <div id="stack-tooltip" style="display: none">tooltip</div>
+
+  <div
+    class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm"
+  >
+    <h1 class="text-3xl font-semibold tracking-tight"><%= title %></h1>
+    <p class="mt-2 text-[var(--muted)]"><%= message %></p>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div
+      class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
+    >
+      <h2 class="font-medium">Featured Project</h2>
+      <p class="mt-1 text-sm text-[var(--muted)]">
+        Add your best project here.
+      </p>
+    </div>
+
+    <div
+      class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
+    >
+      <h2 class="font-medium">Skills</h2>
+      <p class="mt-1 text-sm text-[var(--muted)]">NestJS, TypeScript, etc.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================================ -->
+<!-- =========== Tooltips =========== -->
+<!-- ================================ -->
+<template id="user-tooltip">
+  <div class="stack-tooltip">
+    <h3 class="text-lg font-semibold mb-2">User</h3>
+    <p class="text-sm text-gray-600">
+      Represents a user visiting the portfolio or other hosted service via the
+      stack. <br />
+    </p>
+  </div>
+</template>
+
+<template id="github-tooltip">
+  <div class="stack-tooltip">
+    <h3 class="text-lg font-semibold mb-2">Github</h3>
+    <p class="text-sm text-gray-600">
+      Represents Github the serivce and is used to show communication events.
+      <br />
+    </p>
+  </div>
+</template>
+
+<template id="dev-tooltip">
+  <div class="stack-tooltip">
+    <h3 class="text-lg font-semibold mb-2">Developer</h3>
+    <p class="text-sm text-gray-600">
+      Represents developers working on the stack and its hosted services.
+      <br />
+    </p>
+  </div>
+</template>
+
+<template id="web-tooltip">
+  <div class="stack-tooltip">
+    <h3 class="text-lg font-semibold mb-2">Internet</h3>
+    <p class="text-sm text-gray-600">
+      Represents the internet, the medium through which users interact with the
+      stack.
+      <br />
+    </p>
+  </div>
+</template>
+
+<template id="lan-tooltip">
+  <div class="stack-tooltip">
+    <h3 class="text-lg font-semibold mb-2">Local Network</h3>
+    <p class="text-sm text-gray-600">
+      Represents the local network, the medium through which I as the developer
+      interact with the stack. Others could be allowed througn a vpn when
+      needed.
+      <br />
+    </p>
+  </div>
+</template>
