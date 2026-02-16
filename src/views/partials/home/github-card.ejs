@@ -1,0 +1,100 @@
+<div class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <h2 class="font-medium">GitHub</h2>
+      <p class="mt-1 text-sm text-[var(--muted)]">
+        Contributions + most recently updated repos. (Placeholder for now.)
+      </p>
+    </div>
+
+    <span
+      class="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-[var(--muted)]"
+      title="Static placeholder"
+    >
+      <span class="inline-block h-2 w-2 rounded-full bg-slate-400" aria-hidden="true"></span>
+      Placeholder
+    </span>
+  </div>
+
+  <div class="mt-4 grid gap-4 lg:grid-cols-3">
+    <!-- Contributions graph -->
+    <div class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4 lg:col-span-2">
+      <div class="flex items-center justify-between gap-3">
+        <div class="text-xs sm:text-sm font-medium text-[var(--muted)]">
+          Contributions
+        </div>
+
+        <a
+          href="#"
+          class="text-xs text-[var(--muted)] underline underline-offset-4 hover:text-[var(--text)]"
+          aria-disabled="true"
+          onclick="return false;"
+        >
+          View on GitHub
+        </a>
+      </div>
+
+      <div class="mt-3">
+        <div
+          class="aspect-[16/5] w-full rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]"
+          aria-label="GitHub contributions graph placeholder"
+        ></div>
+
+        <p class="mt-2 text-xs text-[var(--muted)]">
+          Swap this placeholder with an embedded SVG/image or a rendered grid when wired up.
+        </p>
+      </div>
+    </div>
+
+    <!-- Top repos -->
+    <div class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
+      <div class="flex items-center justify-between gap-3">
+        <div class="text-xs sm:text-sm font-medium text-[var(--muted)]">
+          Top repos (updated)
+        </div>
+        <span class="text-xs text-[var(--muted)]">5</span>
+      </div>
+
+      <div class="mt-3 space-y-2">
+        <% const repos = (locals.github && locals.github.repos) ? locals.github.repos : null; %>
+
+        <% if (repos && repos.length) { %>
+          <% repos.slice(0, 5).forEach((r) => { %>
+            <a
+              href="<%= r.url || '#' %>"
+              class="block rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 hover:bg-[var(--surface-2)] transition"
+              <%= r.url ? '' : 'aria-disabled="true" onclick="return false;"' %>
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="font-medium text-[var(--text)] truncate"><%= r.name %></div>
+                  <% if (r.updated_at) { %>
+                    <div class="mt-1 text-xs text-[var(--muted)]">Updated: <%= r.updated_at %></div>
+                  <% } %>
+                </div>
+
+                <% if (r.language) { %>
+                  <span class="shrink-0 inline-flex items-center rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-[var(--muted)]">
+                    <%= r.language %>
+                  </span>
+                <% } %>
+              </div>
+            </a>
+          <% }) %>
+        <% } else { %>
+          <% for (let i = 0; i < 5; i++) { %>
+            <div class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+              <div class="h-4 w-32 rounded bg-[var(--surface-2)]"></div>
+              <div class="mt-2 h-3 w-24 rounded bg-[var(--surface-2)]"></div>
+            </div>
+          <% } %>
+
+          <p class="mt-2 text-xs text-[var(--muted)]">
+            Provide <code class="px-1.5 py-0.5 rounded bg-[var(--surface)] border border-[var(--border)]">locals.github.repos</code>
+            to render real data.
+          </p>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>

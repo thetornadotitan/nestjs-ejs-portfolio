@@ -1,0 +1,183 @@
+<!-- ================================ -->
+<!-- =========== Tooltips =========== -->
+<!-- ================================ -->
+<template id="user-tooltip">
+  <div class="stack-tooltip">
+    <h3>User</h3>
+    <p>
+      Represents someone accessing a hosted service through the public-facing
+      stack.
+    </p>
+  </div>
+</template>
+
+<template id="github-tooltip">
+  <div class="stack-tooltip">
+    <h3>GitHub</h3>
+    <p>
+      Source control and event origin. Commits here trigger automated build and
+      deploy workflows.
+    </p>
+  </div>
+</template>
+
+<template id="dev-tooltip">
+  <div class="stack-tooltip">
+    <h3>Developer</h3>
+    <p>
+      Represents active development; writing code, pushing commits, and managing
+      services.
+    </p>
+  </div>
+</template>
+
+<template id="web-tooltip">
+  <div class="stack-tooltip">
+    <h3>Internet</h3>
+    <p>
+      The public network through which users interact with exposed services.
+    </p>
+  </div>
+</template>
+
+<template id="lan-tooltip">
+  <div class="stack-tooltip">
+    <h3>Local Network</h3>
+    <p>
+      Internal network used for development, administration, and private
+      services. Access can be extended securely via VPN when needed.
+    </p>
+  </div>
+</template>
+
+<template id="deployd-tooltip">
+  <div class="stack-tooltip">
+    <h3>Deploy Daemon</h3>
+    <p>
+      A small Node.js service running under PM2 that monitors GitHub
+      repositories.
+    </p>
+    <ul>
+      <li>Detects new commits</li>
+      <li>Tracks service state</li>
+      <li>Triggers container rebuilds automatically</li>
+    </ul>
+  </div>
+</template>
+
+<template id="builder-tooltip">
+  <div class="stack-tooltip">
+    <h3>Builder Container</h3>
+    <p>
+      A lightweight Docker build layer that pulls the latest code, compiles it,
+      and launches the service in production mode.
+    </p>
+  </div>
+</template>
+
+<template id="tunnel-tooltip">
+  <div class="stack-tooltip">
+    <h3>Cloudflared Tunnel</h3>
+    <p>
+      Securely exposes services to the internet without opening inbound ports.
+    </p>
+    <ul>
+      <li>No traditional port forwarding</li>
+      <li>Cloudflare-managed routing</li>
+      <li>Supports wildcard subdomains</li>
+    </ul>
+  </div>
+</template>
+
+<template id="pubtraefik-tooltip">
+  <div class="stack-tooltip">
+    <h3>Traefik (Public)</h3>
+    <p>
+      Reverse proxy that automatically discovers services via Docker labels and
+      routes public traffic to them.
+    </p>
+  </div>
+</template>
+
+<template id="pubtraefik-tooltip">
+  <div class="stack-tooltip">
+    <h3>Traefik (Public)</h3>
+    <p>
+      Reverse proxy that automatically discovers services via Docker labels and
+      routes public traffic to them.
+    </p>
+  </div>
+</template>
+
+<template id="pritraefik-tooltip">
+  <div class="stack-tooltip">
+    <h3>Traefik (Private)</h3>
+    <p>
+      Internal reverse proxy for admin tools and private services. All internal
+      apps still require authentication.
+    </p>
+  </div>
+</template>
+
+<template id="adguard-tooltip">
+  <div class="stack-tooltip">
+    <h3>AdGuard</h3>
+    <p>Network-wide DNS and ad blocking service.</p>
+    <ul>
+      <li>Centralized DNS control</li>
+      <li>Human-readable local domain names</li>
+      <li>Traffic filtering at the network level</li>
+    </ul>
+  </div>
+</template>
+
+<template id="website-tooltip">
+  <div class="stack-tooltip">
+    <h3>Website</h3>
+    <p>
+      The portfolio application you are currently viewing. Publicly accessible
+      and deployed through the automated stack.
+    </p>
+  </div>
+</template>
+
+<template id="public-tool-tooltip">
+  <div class="stack-tooltip">
+    <h3>Public Tool</h3>
+    <p>
+      A publicly accessible service hosted within the stack. Exposed through the
+      public Traefik proxy and internet-facing tunnel.
+    </p>
+  </div>
+</template>
+
+<template id="portainer-tooltip">
+  <div class="stack-tooltip">
+    <h3>Portainer</h3>
+    <p>
+      A container management UI for monitoring and controlling Docker services.
+    </p>
+    <ul>
+      <li>View container status</li>
+      <li>Inspect logs</li>
+      <li>Manage stacks and deployments</li>
+    </ul>
+    <p>Accessible only via the private network.</p>
+  </div>
+</template>
+
+<template id="adguard-ui-tooltip">
+  <div class="stack-tooltip">
+    <h3>AdGuard UI</h3>
+    <p>
+      Administrative interface for managing network-wide DNS and filtering
+      rules.
+    </p>
+    <ul>
+      <li>Block or allow domains</li>
+      <li>Monitor DNS queries</li>
+      <li>Manage local DNS records</li>
+    </ul>
+    <p>Accessible only via the private network.</p>
+  </div>
+</template>

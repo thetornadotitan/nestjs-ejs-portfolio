@@ -9,10 +9,14 @@ export class PortfolioController {
   home(@Req() req: Request) {
     return {
       title: 'Isaac Hisey',
-      message: 'Welcome to my portfolio.',
       siteName: this.siteName,
       activePath: req.path,
       page: 'pages/home',
+      headCss: `<link rel="stylesheet" href="/css/stack.css" />`,
+      headJs: `
+        <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+        <script type="module" defer src="/js/stack.js"></script>
+      `,
     };
   }
 
@@ -24,6 +28,8 @@ export class PortfolioController {
       siteName: this.siteName,
       activePath: req.path,
       page: 'pages/about',
+      headCss: ``,
+      headJs: ``,
     };
   }
 }

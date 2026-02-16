@@ -7,7 +7,7 @@
 
   /* text */
   --text: #111827;
-  --muted: #6b7280;
+  --muted: rgb(69, 69, 79);
 
   /* nav/interactive */
   --hover: rgba(0, 0, 0, 0.05);
@@ -25,7 +25,7 @@
   --border: #1f2937;
 
   --text: #f9fafb;
-  --muted: #9ca3af;
+  --muted: #c5c8dd;
 
   --hover: rgba(255, 255, 255, 0.06);
   --active: rgba(255, 255, 255, 0.1);

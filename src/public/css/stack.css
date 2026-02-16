@@ -75,3 +75,35 @@ svg [inkscape\:label='path'] {
   line-height: 1.35;
   color: var(--muted);
 }
+
+.stack-tooltip ul {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.stack-tooltip li {
+  position: relative;
+  padding-left: 1rem;
+  font-size: 0.85rem;
+  line-height: 1.25rem;
+  color: var(--muted);
+}
+
+.stack-tooltip li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+/* Prevent one-frame flash before GSAP applies initial states */
+.stack-stage {
+  visibility: hidden; /* keeps layout size but hides paint */
+}

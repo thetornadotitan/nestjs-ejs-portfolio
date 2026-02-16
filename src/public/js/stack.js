@@ -1,253 +1,122 @@
-let tooltipShowing = false;
-let tooltipTimeout = 300;
-let tooltipTimeoutId = null;
-let tooltipOpenedby = null;
+import { createDevRequestAnim } from './animations/dev-request.js';
+import { createIntroAnim } from './animations/intro.js';
+import { createWebRequestAnim } from './animations/web-request.js';
+import { Tooltip } from './tooltip.js';
 
-function createIntroTimeline() {
-  console.log('Creating intro timeline');
-  const tl = gsap.timeline({ paused: true });
+let webRequestTl = null;
+let devRequestTl = null;
 
-  // Main Blocks
-  tl.from('#g66', { y: 200, opacity: 0, duration: 1.2, ease: 'power2.out' });
-  tl.from(
-    '#g65',
-    { y: 200, opacity: 0, duration: 1.2, ease: 'power2.out' },
-    '-=.8',
-  );
+const legendTooltip = new Tooltip({
+  el: '#stack-tooltip',
+  hideDelay: 250,
+  offset: { x: 12, y: -50 },
+  anchor: 'page', // absolute; scroll-aware
+});
 
-  // Foundations and Services
-  tl.from(
-    '#g17',
-    {
-      scaleX: 0,
-      opacity: 0,
-      transformOrigin: 'left center',
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=.8',
-  );
-  tl.from(
-    '#g50',
-    {
-      scaleX: 0,
-      opacity: 0,
-      transformOrigin: 'right center',
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=0.8',
-  );
+const processTooltip = new Tooltip({
+  el: '#process-tooltip',
+  hideDelay: 150,
+  offset: { x: 12, y: -10 },
+  anchor: 'page',
+  makeListeners: false,
+});
 
-  //Individual Services
-  //Foundations:
-  tl.from(
-    '#g28',
-    {
-      x: 80,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=.4',
-  );
-  tl.from(
-    '#g19',
-    {
-      x: 80,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=.2',
-  );
-  tl.from(
-    '#g31',
-    {
-      x: 80,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=.2',
-  );
-  tl.from(
-    '#g33',
-    {
-      x: 80,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=.2',
-  );
+function setupLegendHover() {
+  const elementToHTMLMap = {
+    g6: templateHTML('user-tooltip'),
+    g15: templateHTML('github-tooltip'),
+    g7: templateHTML('dev-tooltip'),
+    g61: templateHTML('web-tooltip'),
+    g62: templateHTML('lan-tooltip'),
+    g24: templateHTML('deployd-tooltip'),
+    g28: templateHTML('tunnel-tooltip'),
+    g19: templateHTML('pubtraefik-tooltip'),
+    g31: templateHTML('pritraefik-tooltip'),
+    g33: templateHTML('adguard-tooltip'),
+    g56: templateHTML('builder-tooltip'),
+    g43: templateHTML('website-tooltip'),
+    g40: templateHTML('public-tool-tooltip'),
+    g38: templateHTML('portainer-tooltip'),
+    g49: templateHTML('adguard-ui-tooltip'),
+  };
 
-  //Services:
-  tl.from(
-    '#g43',
-    {
-      x: -20,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=1.8',
-  );
-  tl.from(
-    '#g40',
-    {
-      x: -20,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=1.4',
-  );
-  tl.from(
-    '#g38',
-    {
-      x: -20,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=1.0',
-  );
-  tl.from(
-    '#g49',
-    {
-      x: -20,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=0.6',
-  );
+  Object.keys(elementToHTMLMap).forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return console.warn(`Element with id ${id} not found`);
 
-  // Ancelary services
-  tl.from(
-    '#g24',
-    {
-      scaleX: 0,
-      opacity: 0,
-      transformOrigin: 'left center',
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=0.2',
-  );
-  tl.from(
-    '#g56',
-    {
-      scaleX: 0,
-      opacity: 0,
-      transformOrigin: 'right center',
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=0.6',
-  );
+    const show = () => {
+      if (!processTooltip.isOpen) {
+        const html = elementToHTMLMap[id];
+        if (html) legendTooltip.showForElement(el, html);
+      }
+    };
 
-  //externals
-  tl.from(
-    '#g6',
-    {
-      x: -20,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=0.4',
-  );
-  tl.from(
-    '#g15',
-    {
-      x: -20,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=0.4',
-  );
-  tl.from(
-    '#g7',
-    {
-      x: -20,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=0.4',
-  );
+    // Hover (mouse only)
+    el.addEventListener('pointerenter', (e) => {
+      if (e.pointerType === 'mouse') show();
+    });
 
-  //Gateways
-  tl.from(
-    '#g61',
-    {
-      y: -20,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=0.4',
-  );
-  tl.from(
-    '#g62',
-    {
-      y: 155,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=0.4',
-  );
+    el.addEventListener('pointerleave', (e) => {
+      if (e.pointerType === 'mouse') legendTooltip.hideDelayed();
+    });
 
-  tl.from(
-    '#stack-btns',
-    {
-      scaleY: 0,
-      transformOrigin: 'center top',
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power2.out',
-    },
-    '-=0.4',
-  );
-
-  return tl;
-}
-
-function setupTooltipHover() {
-  const tooltip = document.getElementById('stack-tooltip');
-  tooltip.addEventListener('mouseenter', () => {
-    console.log('Tooltip mouse enter');
-    clearTimeout(tooltipTimeoutId);
-    tooltipShowing = true;
+    // Tap/click (touch + mouse)
+    el.addEventListener('click', show);
   });
-  tooltip.addEventListener('mouseleave', () => {
-    console.log('Tooltip mouse leave');
-    tooltipShowing = false;
-    tooltipTimeoutId = setTimeout(hideTooltip, tooltipTimeout);
-  });
-}
 
-function showTooltip(html, x, y, openedBy) {
-  const tooltip = document.getElementById('stack-tooltip');
-  tooltip.innerHTML = html;
-  tooltip.style.display = 'block';
-  tooltip.style.position = 'absolute';
-  tooltip.style.left = `${x}px`;
-  tooltip.style.top = `${y}px`;
-  tooltipShowing = true;
-  tooltipOpenedby = openedBy;
-}
+  // Close when tapping/clicking outside
+  // Close when the user taps outside (but NOT when they scroll)
+  let downX = 0;
+  let downY = 0;
+  let moved = false;
+  let downTarget = null;
 
-function hideTooltip() {
-  const tooltip = document.getElementById('stack-tooltip');
-  tooltip.textContent = '';
-  tooltip.style.display = 'none';
-  tooltipShowing = false;
-  tooltipOpenedby = null;
+  document.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (!legendTooltip.isOpen) return;
+
+      moved = false;
+      downX = e.clientX;
+      downY = e.clientY;
+      downTarget = e.target;
+
+      // Capture so we still get pointerup even if the finger leaves the element
+      try {
+        e.target.setPointerCapture?.(e.pointerId);
+      } catch {}
+    },
+    { passive: true },
+  );
+
+  document.addEventListener(
+    'pointermove',
+    (e) => {
+      if (!legendTooltip.isOpen) return;
+
+      // If the finger moves more than a few px, treat it as scroll/drag
+      const dx = Math.abs(e.clientX - downX);
+      const dy = Math.abs(e.clientY - downY);
+      if (dx > 8 || dy > 8) moved = true;
+    },
+    { passive: true },
+  );
+
+  document.addEventListener(
+    'pointerup',
+    (e) => {
+      if (!legendTooltip.isOpen) return;
+      if (moved) return; // user was scrolling—don’t close
+
+      const t = downTarget || e.target;
+      const insideTip = legendTooltip.el.contains(t);
+      const onTrigger =
+        legendTooltip.openedBy && legendTooltip.openedBy.contains(t);
+
+      if (!insideTip && !onTrigger) legendTooltip.hide();
+    },
+    { passive: true },
+  );
 }
 
 function templateHTML(id) {
@@ -255,56 +124,26 @@ function templateHTML(id) {
   return tpl ? tpl.innerHTML.trim() : '';
 }
 
-function setupClickHandlers() {
-  const elementToHTMLMap = {
-    g6: templateHTML('user-tooltip'),
-    g15: templateHTML('github-tooltip'),
-    g7: templateHTML('dev-tooltip'),
-    g61: templateHTML('web-tooltip'),
-    g62: templateHTML('lan-tooltip'),
-    g24: 'Deploy Daemon',
-    g28: 'CloudFlared Tunnel',
-    g19: 'Traefik (Public)',
-    g31: 'Traefik (Private)',
-    g33: 'Adguard',
-    g56: 'Builder Container',
-    g43: 'Website',
-    g40: 'Public Tools',
-    g38: 'Portainer',
-    g49: 'Adguard UI',
+function setupAnimationButtons() {
+  document.getElementById('btn-sim-user-request').onclick = () => {
+    if (!webRequestTl) webRequestTl = createWebRequestAnim(processTooltip);
+    // if it’s mid-run, restarting avoids “drifting”
+    webRequestTl.restart(true);
   };
-  const elements = Object.keys(elementToHTMLMap).map((id) => {
-    console.log(`Getting element with id ${id}`);
-    const el = document.getElementById(id);
-    if (!el) console.warn(`Element with id ${id} not found`);
-    return el;
-  });
-  elements.forEach((el) => {
-    console.log(`Adding click handler to ${el}`);
-    el.addEventListener('click', (e) => {
-      const tech = elementToHTMLMap[el.id];
-      if (tech) {
-        clearTimeout(tooltipTimeoutId);
-        const rect = el.getBoundingClientRect();
-        if (tooltipOpenedby === el) {
-          hideTooltip();
-          tooltipOpenedby = null;
-          return;
-        }
-        showTooltip(tech, rect.left + rect.width + 10, rect.top - 50, el);
-      } else {
-        hideTooltip();
-      }
-    });
-    el.addEventListener('mouseleave', () => {
-      tooltipTimeoutId = setTimeout(hideTooltip, tooltipTimeout);
-    });
-  });
+  document.getElementById('btn-sim-dev-request').onclick = () => {
+    if (!devRequestTl) devRequestTl = createDevRequestAnim(processTooltip);
+    // if it’s mid-run, restarting avoids “drifting”
+    devRequestTl.restart(true);
+  };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const intro = createIntroTimeline();
+  const intro = createIntroAnim();
+
+  intro.eventCallback('onComplete', () => {
+    setupLegendHover();
+    setupAnimationButtons();
+  });
+
   intro.restart().play();
-  setupTooltipHover();
-  setupClickHandlers();
 });
