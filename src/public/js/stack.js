@@ -127,12 +127,13 @@ function templateHTML(id) {
 function setupAnimationButtons() {
   document.getElementById('btn-sim-user-request').onclick = () => {
     if (!webRequestTl) webRequestTl = createWebRequestAnim(processTooltip);
-    // if it’s mid-run, restarting avoids “drifting”
+    stopAllTimelines(webRequestTl);
     webRequestTl.restart(true);
   };
+
   document.getElementById('btn-sim-dev-request').onclick = () => {
     if (!devRequestTl) devRequestTl = createDevRequestAnim(processTooltip);
-    // if it’s mid-run, restarting avoids “drifting”
+    stopAllTimelines(devRequestTl);
     devRequestTl.restart(true);
   };
 }
@@ -147,3 +148,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   intro.restart().play();
 });
+
+function stopAllTimelines(exceptTl = null) {
+  const timelines = [webRequestTl, devRequestTl].filter(Boolean);
+
+  timelines.forEach((tl) => {
+    if (tl === exceptTl) return;
+    tl.pause(0);
+    // prevent animations leaving transforms/opacity behind:
+    tl.invalidate().progress(0);
+  });
+
+  // close the process tooltip when switching
+  processTooltip.hide?.();
+}

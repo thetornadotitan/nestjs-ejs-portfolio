@@ -1,98 +1,209 @@
-<div class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+<div
+  class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
+>
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="min-w-0">
       <h2 class="font-medium">GitHub</h2>
       <p class="mt-1 text-sm text-[var(--muted)]">
-        Contributions + most recently updated repos. (Placeholder for now.)
+        Contributions (Combined GitHub + GitLab) + most recently updated repos.
+        (GitHub)
       </p>
     </div>
-
     <span
       class="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-[var(--muted)]"
-      title="Static placeholder"
+      title="Live data (cached server-side)"
     >
-      <span class="inline-block h-2 w-2 rounded-full bg-slate-400" aria-hidden="true"></span>
-      Placeholder
+      <span
+        class="inline-block h-2 w-2 rounded-full bg-emerald-500"
+        aria-hidden="true"
+      ></span>
+      Live (cached)
     </span>
   </div>
-
   <div class="mt-4 grid gap-4 lg:grid-cols-3">
-    <!-- Contributions graph -->
-    <div class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4 lg:col-span-2">
+    <div
+      class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4 lg:col-span-2"
+    >
       <div class="flex items-center justify-between gap-3">
         <div class="text-xs sm:text-sm font-medium text-[var(--muted)]">
           Contributions
         </div>
-
+        <% const profileUrl=(locals.github && locals.github.profileUrl) ? locals.github.profileUrl : '' ; const profileDisabled=!profileUrl; %>
         <a
-          href="#"
-          class="text-xs text-[var(--muted)] underline underline-offset-4 hover:text-[var(--text)]"
-          aria-disabled="true"
-          onclick="return false;"
+          href="<%= profileUrl || '#' %>"
+          class="text-xs underline underline-offset-4 hover:text-[var(--text)] <%= profileDisabled ? 'text-[var(--muted)] pointer-events-none opacity-60' : 'text-[var(--muted)]' %>"
+          aria-disabled="<%= profileDisabled ? 'true' : 'false' %>"
+          tabindex="<%= profileDisabled ? '-1' : '0' %>"
         >
           View on GitHub
         </a>
       </div>
-
       <div class="mt-3">
+        <% const contrib = (locals.github &&
+        Array.isArray(locals.github.contributions)) ?
+        locals.github.contributions : []; const hasData = contrib.length > 0;
+        const parseDate = (s) => { const parts = String(s || '').split('-');
+        const y = Number(parts[0] || 0); const m = Number(parts[1] || 1); const
+        d = Number(parts[2] || 1); return new Date(Date.UTC(y, m - 1, d)); };
+        const pad2 = (n) => String(n).padStart(2, '0'); const fmtISO = (dt) =>
+        `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth() +
+        1)}-${pad2(dt.getUTCDate())}`; const addDays = (dt, n) => new
+        Date(dt.getTime() + n * 86400000); const monthShort = (dt) =>
+        dt.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }); const
+        sorted = hasData ? [...contrib].sort((a, b) =>
+        String(a.date).localeCompare(String(b.date))) : []; const byDate = new
+        Map(); for (const d of sorted) byDate.set(d.date, typeof d.count ===
+        'number' ? d.count : 0); const max = sorted.reduce( (m, d) =>
+        Math.max(m, typeof d.count === 'number' ? d.count : 0), 0, ); const
+        level = (count) => { if (!max || count <= 0) return 0; if (count < max *
+        0.25) return 1; if (count < max * 0.5) return 2; if (count < max * 0.75)
+        return 3; return 4; }; let weeks = []; let monthLabels = []; let first =
+        null; let last = null; const WINDOW_DAYS = 183; if (hasData) { last =
+        parseDate(sorted[sorted.length - 1].date); first = addDays(last,
+        -(WINDOW_DAYS - 1)); const start = addDays(first, -first.getUTCDay());
+        const end = addDays(last, 6 - last.getUTCDay()); for (let cursor = new
+        Date(start); cursor <= end; cursor = addDays(cursor, 7)) { const days =
+        []; for (let i = 0; i < 7; i++) days.push(addDays(cursor, i));
+        weeks.push(days); } let prevMonth = null; for (let w = 0; w <
+        weeks.length; w++) { const m = weeks[w][0].getUTCMonth(); if (m !==
+        prevMonth) { monthLabels.push({ index: w, label: monthShort(weeks[w][0])
+        }); prevMonth = m; } } } const dayLabels = [ { row: 1, label: 'Mon' }, {
+        row: 3, label: 'Wed' }, { row: 5, label: 'Fri' }, ]; const gridStyle =
+        `grid-template-columns: 24px repeat(${weeks.length}, 14px);`; %> <% if
+        (hasData) { %>
+        <div
+          class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"
+        >
+          <div class="overflow-x-auto">
+            <div class="min-w-max w-fit mx-auto">
+              <div class="inline-grid gap-1.5" style="<%= gridStyle %>">
+                <div></div>
+                <% for (let w=0; w < weeks.length; w++) { %>
+                <div class="h-4 text-[11px] leading-4 text-[var(--muted)]">
+                  <% let label='' ; for (let i=0; i < monthLabels.length; i++) {
+                  if (monthLabels[i].index===w) { label=monthLabels[i].label;
+                  break; } } %> <%= label %>
+                </div>
+                <% } %>
+                <% for (let r=0; r < 7; r++) { %>
+                <div
+                  class="h-3 text-[11px] leading-3 text-[var(--muted)] flex items-center"
+                >
+                  <% let dl='' ; for (let i=0; i < dayLabels.length; i++) { if (dayLabels[i].row===r) { dl=dayLabels[i].label; break; } } %>
+                  <%= dl %>
+                </div>
+                <% for (let w=0; w < weeks.length; w++) { const dt=weeks[w][r];
+                const key=fmtISO(dt); const c=byDate.has(key) ? byDate.get(key)
+                : 0; const l=level(c); const inRange=dt>= first && dt <= last;
+                %>
+                <div
+                  title="<%= key %>: <%= c %>"
+                  class="h-[11px] w-[11px] rounded-[3px] border border-[var(--border)] <%= !inRange ? 'opacity-40' : '' %> <%= l === 0 ? 'bg-[var(--surface-2)]' : '' %> <%= l === 1 ? 'bg-emerald-100' : '' %> <%= l === 2 ? 'bg-emerald-200' : '' %> <%= l === 3 ? 'bg-emerald-300' : '' %> <%= l === 4 ? 'bg-emerald-400' : '' %>"
+                ></div>
+                <% } %>
+                <% } %>
+              </div>
+            </div>
+          </div>
+          <div
+            class="mt-3 flex items-center justify-between text-xs text-[var(--muted)]"
+          >
+            <span>Less</span>
+            <div class="flex items-center gap-1">
+              <span
+                class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-[var(--surface-2)]"
+              ></span>
+              <span
+                class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-emerald-100"
+              ></span>
+              <span
+                class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-emerald-200"
+              ></span>
+              <span
+                class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-emerald-300"
+              ></span>
+              <span
+                class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-emerald-400"
+              ></span>
+            </div>
+            <span>More</span>
+          </div>
+        </div>
+        <p class="mt-2 text-xs text-[var(--muted)]">
+          Combined GitHub + GitLab activity (last 6 months).
+        </p>
+        <% } else { %>
         <div
           class="aspect-[16/5] w-full rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]"
           aria-label="GitHub contributions graph placeholder"
         ></div>
-
         <p class="mt-2 text-xs text-[var(--muted)]">
-          Swap this placeholder with an embedded SVG/image or a rendered grid when wired up.
+          No contribution data yet. Provide
+          <code
+            class="px-1.5 py-0.5 rounded bg-[var(--surface)] border border-[var(--border)]"
+            >locals.github.contributions</code
+          >.
         </p>
+        <% } %>
       </div>
     </div>
-
-    <!-- Top repos -->
-    <div class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
+    <div
+      class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4"
+    >
       <div class="flex items-center justify-between gap-3">
         <div class="text-xs sm:text-sm font-medium text-[var(--muted)]">
           Top repos (updated)
         </div>
         <span class="text-xs text-[var(--muted)]">5</span>
       </div>
-
       <div class="mt-3 space-y-2">
-        <% const repos = (locals.github && locals.github.repos) ? locals.github.repos : null; %>
-
-        <% if (repos && repos.length) { %>
-          <% repos.slice(0, 5).forEach((r) => { %>
-            <a
-              href="<%= r.url || '#' %>"
-              class="block rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 hover:bg-[var(--surface-2)] transition"
-              <%= r.url ? '' : 'aria-disabled="true" onclick="return false;"' %>
-            >
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="font-medium text-[var(--text)] truncate"><%= r.name %></div>
-                  <% if (r.updated_at) { %>
-                    <div class="mt-1 text-xs text-[var(--muted)]">Updated: <%= r.updated_at %></div>
-                  <% } %>
-                </div>
-
-                <% if (r.language) { %>
-                  <span class="shrink-0 inline-flex items-center rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-[var(--muted)]">
-                    <%= r.language %>
-                  </span>
-                <% } %>
+        <% const repos=(locals.github && locals.github.repos) ?
+        locals.github.repos : null; %> <% if (repos && repos.length) { %> <%
+        repos.slice(0, 5).forEach((r)=> { const isDisabled = !r.url; %>
+        <a
+          href="<%= r.url || '#' %>"
+          class="block rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:bg-[var(--surface-2)] <%= isDisabled ? 'pointer-events-none opacity-60' : '' %>"
+          aria-disabled="<%= isDisabled ? 'true' : 'false' %>"
+          tabindex="<%= isDisabled ? '-1' : '0' %>"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="truncate font-medium text-[var(--text)]">
+                <%= r.name %>
               </div>
-            </a>
-          <% }) %>
-        <% } else { %>
-          <% for (let i = 0; i < 5; i++) { %>
-            <div class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
-              <div class="h-4 w-32 rounded bg-[var(--surface-2)]"></div>
-              <div class="mt-2 h-3 w-24 rounded bg-[var(--surface-2)]"></div>
+              <% if (r.updated_at) { %>
+              <div class="mt-1 text-xs text-[var(--muted)]">
+                Updated: <%= r.updated_at %>
+              </div>
+              <% } %>
             </div>
-          <% } %>
-
-          <p class="mt-2 text-xs text-[var(--muted)]">
-            Provide <code class="px-1.5 py-0.5 rounded bg-[var(--surface)] border border-[var(--border)]">locals.github.repos</code>
-            to render real data.
-          </p>
+            <% if (r.language) { %>
+            <span
+              class="shrink-0 inline-flex items-center rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-[var(--muted)]"
+            >
+              <%= r.language %>
+            </span>
+            <% } %>
+          </div>
+        </a>
+        <% }) %>
+        <% } else { %>
+        <% for (let i=0; i < 5; i++) { %>
+        <div
+          class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"
+        >
+          <div class="h-4 w-32 rounded bg-[var(--surface-2)]"></div>
+          <div class="mt-2 h-3 w-24 rounded bg-[var(--surface-2)]"></div>
+        </div>
+        <% } %>
+        <p class="mt-2 text-xs text-[var(--muted)]">
+          Provide
+          <code
+            class="px-1.5 py-0.5 rounded bg-[var(--surface)] border border-[var(--border)]"
+            >locals.github.repos</code
+          >
+          to render real data.
+        </p>
         <% } %>
       </div>
     </div>

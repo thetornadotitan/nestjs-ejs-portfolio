@@ -94,8 +94,10 @@ export class Tooltip {
       // flip to left if overflow right
       if (cx + w > vw - pad) cx = rect.left - w - off.x;
 
-      // clamp vertically
-      cy = Math.max(pad, Math.min(cy, vh - h - pad));
+      // clamp vertically - commented as it is undesirable.
+      // A user may scroll away before an animation finishes.
+      // Don't want tooltips popping up around the rest of the page.
+      // cy = Math.max(pad, Math.min(cy, vh - h - pad));
 
       // also clamp horizontally just in case
       cx = Math.max(pad, Math.min(cx, vw - w - pad));
