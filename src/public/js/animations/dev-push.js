@@ -4,12 +4,10 @@ import { drawPath } from './utils/drawPath.js';
 import { addPopGlowWithTooltip } from './utils/glowWithTooltip.js';
 import { hideAllPaths } from './utils/hideAllPaths.js';
 
-export function createDevRequestAnim(tooltip) {
+export function createDevPushAnim(tooltip) {
   hideAllPaths(undefined, { resetDraw: true });
-
   const tl = gsap.timeline({ paused: true });
 
-  //safety
   tl.call(() => hideAllPaths(), null, 0);
 
   addPopGlowWithTooltip(tl, {
@@ -19,12 +17,12 @@ export function createDevRequestAnim(tooltip) {
     tooltipInstance: tooltip,
     tooltipTitle: 'Step 1',
     tooltipBody:
-      'First, a dev makes a request via the local area network or VPN.',
+      'First, a developer pushes new code to a monitored repository.',
   });
 
   drawPath(tl, {
-    target: '#dev2lan',
-    label: 'dev2lanDraw',
+    target: '#dev2git',
+    label: 'dev2gitDraw',
     startAt: 'devPop+=0.15',
     duration: 0.337,
     from: 'start',
@@ -33,61 +31,61 @@ export function createDevRequestAnim(tooltip) {
   tl.addLabel('afterStep1', 'devPop:done+=1.0');
 
   addPopGlowWithTooltip(tl, {
-    target: '#g31',
-    label: 'traefikpri',
+    target: '#g24',
+    label: 'deployd',
     startAt: 'afterStep1',
     tooltipInstance: tooltip,
     tooltipTitle: 'Step 2',
     tooltipBody:
-      'The request moves directly from the local area network or VPN to Traefik for routing.',
+      'Deployd, the deployment daemon, detects the change in the repository.',
   });
 
   drawPath(tl, {
-    target: '#lan2found',
-    label: 'lan2foundDraw',
-    startAt: 'traefikpri+=0.15',
+    target: '#git2dep',
+    label: 'git2depDraw',
+    startAt: 'deployd+=0.15',
     duration: 0.337,
-    from: 'start',
+    from: 'end',
   });
 
-  tl.addLabel('afterStep2', 'traefikpri:done+=1.0');
+  tl.addLabel('afterStep2', 'deployd:done+=1.0');
 
   addPopGlowWithTooltip(tl, {
-    target: '#g38',
-    label: 'portainer',
+    target: '#rect35',
+    label: 'services',
     startAt: 'afterStep2',
     tooltipInstance: tooltip,
     tooltipTitle: 'Step 3',
     tooltipBody:
-      'Traefik matches the host/path rules and routes the request to the correct service.',
+      'Deployd sends rebuild requests to services affected by the change.',
   });
 
   drawPath(tl, {
-    target: '#traf2port',
-    label: 'traf2portDraw',
-    startAt: 'portainer+=0.15',
+    target: '#dep2serv',
+    label: 'dep2servDraw',
+    startAt: 'services+=0.15',
     duration: 0.337,
     from: 'start',
   });
 
-  drawPath(tl, {
-    target: '#traf2ad',
-    label: 'traf2adDraw',
-    startAt: 'portainer+=0.15',
-    duration: 0.337,
-    from: 'start',
-  });
-
-  tl.addLabel('afterStep3', 'portainer:done+=1.0');
+  tl.addLabel('afterStep3', 'services:done+=1.0');
 
   addPopGlowWithTooltip(tl, {
-    target: '#g7',
-    label: 'devPopEnd',
+    target: '#g56',
+    label: 'builder',
     startAt: 'afterStep3',
     tooltipInstance: tooltip,
     tooltipTitle: 'Step 4',
     tooltipBody:
-      'Finally, the service sends the response back through the same path to the dev, completing the request.',
+      'When a service gets a rebuild request, the builder daemon pulls the latest code, installs dependencies, and rebuilds the service inside its container.',
+  });
+
+  drawPath(tl, {
+    target: '#build2serv',
+    label: 'build2servDraw',
+    startAt: 'builder+=0.15',
+    duration: 0.337,
+    from: 'start',
   });
 
   return tl;

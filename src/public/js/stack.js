@@ -1,10 +1,16 @@
+import { createDevPushAnim } from './animations/dev-push.js';
 import { createDevRequestAnim } from './animations/dev-request.js';
+import { createHidePathsAnim } from './animations/hide-paths.js';
 import { createIntroAnim } from './animations/intro.js';
+import { createShowPathsAnim } from './animations/show-paths.js';
 import { createWebRequestAnim } from './animations/web-request.js';
 import { Tooltip } from './tooltip.js';
 
 let webRequestTl = null;
 let devRequestTl = null;
+let devPushTl = null;
+let showPathsTl = null;
+let hidePathsTl = null;
 
 const legendTooltip = new Tooltip({
   el: '#stack-tooltip',
@@ -136,6 +142,24 @@ function setupAnimationButtons() {
     stopAllTimelines(devRequestTl);
     devRequestTl.restart(true);
   };
+
+  document.getElementById('btn-sim-dev-push').onclick = () => {
+    if (!devPushTl) devPushTl = createDevPushAnim(processTooltip);
+    stopAllTimelines(devPushTl);
+    devPushTl.restart(true);
+  };
+
+  document.getElementById('btn-show-paths').onclick = () => {
+    if (!showPathsTl) showPathsTl = createShowPathsAnim(processTooltip);
+    stopAllTimelines(showPathsTl);
+    showPathsTl.restart(true);
+  };
+
+  document.getElementById('btn-hide-paths').onclick = () => {
+    if (!hidePathsTl) hidePathsTl = createHidePathsAnim(processTooltip);
+    stopAllTimelines(hidePathsTl);
+    hidePathsTl.restart(true);
+  };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -150,15 +174,20 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function stopAllTimelines(exceptTl = null) {
-  const timelines = [webRequestTl, devRequestTl].filter(Boolean);
+  const timelines = [
+    webRequestTl,
+    devRequestTl,
+    devPushTl,
+    showPathsTl,
+    hidePathsTl,
+  ].filter(Boolean);
 
   timelines.forEach((tl) => {
     if (tl === exceptTl) return;
-    tl.pause(0);
-    // prevent animations leaving transforms/opacity behind:
-    tl.invalidate().progress(0);
+    tl.pause();
+    // reset without triggering callbacks / from() re-application
+    tl.invalidate().progress(0, true);
   });
 
-  // close the process tooltip when switching
   processTooltip.hide?.();
 }

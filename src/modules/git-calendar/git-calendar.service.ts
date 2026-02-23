@@ -13,12 +13,12 @@ type CombinedDay = { date: string; count: number };
 
 type GetCombinedParams = {
   githubLogin: string;
-  gitlabUserId: string | number; // numeric user id is safest for GitLab
-  gitlabBaseUrl?: string; // allow override per-call
-  daysBack?: number; // default 371 to match ~53 weeks
+  gitlabUserId: string | number;
+  gitlabBaseUrl?: string;
+  daysBack?: number;
   ttlMs?: number;
-  includeGitLab?: boolean; // disable GL easily
-  includeGitHub?: boolean; // disable GH easily
+  includeGitLab?: boolean;
+  includeGitHub?: boolean;
 };
 
 type RepoItem = {
@@ -50,8 +50,12 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
     this.warmTimer = null;
   }
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // Warm loop: PROACTIVE refresh (network happens here, not on request path)
+  // ────────────────────────────────────────────────────────────────────────────
+
   private startWarmLoop() {
-    const intervalMs = 300000;
+    const intervalMs = 5 * 60 * 1000; // 5 min
     const safeIntervalMs =
       Number.isFinite(intervalMs) && intervalMs >= 30_000
         ? intervalMs
@@ -74,38 +78,42 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
     }
 
     const githubLogin = this.config.get<string>('GITHUB_LOGIN') ?? '';
-    const gitlabUserId = this.config.get<string>('GITLAB_USER_ID') ?? '';
+    const gitlabUserIdRaw = this.config.get<string>('GITLAB_USER_ID') ?? '';
     const gitlabBaseUrl =
       this.config.get<string>('GITLAB_BASE_URL') ?? 'https://gitlab.com';
 
-    if (!githubLogin && !gitlabUserId) {
+    if (!githubLogin && !gitlabUserIdRaw) {
       this.logger.warn(
         'Warm skipped — missing GITHUB_LOGIN and GITLAB_USER_ID',
       );
       return;
     }
 
-    const daysBack = 371;
+    const daysBack = 189;
     const repoLimit = 5;
+
+    // IMPORTANT:
+    // refresh TTL should be > warm interval so you don't expire between refreshes
+    const ttlMs = 15 * 60 * 1000; // 15 min
 
     this.warmInFlight = true;
     const t0 = Date.now();
 
     try {
       await Promise.all([
-        this.getCombinedCalendar({
+        this.refreshCombinedCalendarBlocking({
           githubLogin,
-          gitlabUserId,
+          gitlabUserId: gitlabUserIdRaw,
           gitlabBaseUrl,
-          daysBack: Number.isFinite(daysBack) ? daysBack : 371,
-          ttlMs: 30 * 60 * 1000,
+          daysBack,
+          ttlMs,
         }),
-        this.getTopRepos({
+        this.refreshTopReposBlocking({
           githubLogin,
-          gitlabUserId,
+          gitlabUserId: gitlabUserIdRaw,
           gitlabBaseUrl,
-          limit: Number.isFinite(repoLimit) ? repoLimit : 5,
-          ttlMs: 30 * 60 * 1000,
+          limit: repoLimit,
+          ttlMs,
         }),
       ]);
 
@@ -118,25 +126,31 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // Request-path getters: READ-ONLY cache (never hit network)
+  // ────────────────────────────────────────────────────────────────────────────
+
   /**
-   * Public API: returns merged contributions per day (date asc).
-   * Cached by params (login, gitlab user, daysBack, baseUrl).
+   * Public API: merged contributions per day (date asc).
+   * NEVER hits GitHub/GitLab on a request. Reads cache only.
    */
-  async getCombinedCalendar(params: GetCombinedParams): Promise<CombinedDay[]> {
+  async getCombinedCalendar(params: GetCombinedParams): Promise<{
+    lastUpdated: Date;
+    data: CombinedDay[];
+  } | null> {
     const {
       githubLogin,
       gitlabUserId,
       gitlabBaseUrl = this.config.get<string>('GITLAB_BASE_URL') ??
         'https://gitlab.com',
       daysBack = 371,
-      ttlMs = 30 * 60 * 1000,
       includeGitLab = true,
       includeGitHub = true,
     } = params;
 
-    if (!includeGitHub && !includeGitLab) return [];
+    if (!includeGitHub && !includeGitLab) return null;
 
-    const cacheKey = this.buildCacheKey({
+    const baseKey = this.buildCacheKey({
       githubLogin,
       gitlabUserId: String(gitlabUserId),
       gitlabBaseUrl,
@@ -145,10 +159,101 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
       includeGitHub,
     });
 
-    const cached = await this.cache.get<CombinedDay[]>(cacheKey);
-    if (cached?.length) {
-      return cached;
-    }
+    const fresh = await this.cache.get<{
+      lastUpdated: Date;
+      data: CombinedDay[];
+    }>(`${baseKey}:fresh`);
+    if (fresh) return fresh;
+
+    const stale = await this.cache.get<{
+      lastUpdated: Date;
+      data: CombinedDay[];
+    }>(`${baseKey}:stale`);
+
+    return stale ?? null;
+  }
+
+  /**
+   * Public API: top repos.
+   * NEVER hits GitHub/GitLab on a request. Reads cache only.
+   */
+  async getTopRepos(params: {
+    githubLogin: string;
+    gitlabUserId: string | number;
+    gitlabBaseUrl?: string;
+    limit?: number;
+    includeGitHub?: boolean;
+    includeGitLab?: boolean;
+  }): Promise<{
+    lastUpdated: Date;
+    data: RepoItem[];
+  }> {
+    const {
+      githubLogin,
+      gitlabUserId,
+      gitlabBaseUrl = this.config.get<string>('GITLAB_BASE_URL') ??
+        'https://gitlab.com',
+      limit = 5,
+      includeGitHub = true,
+      includeGitLab = true,
+    } = params;
+
+    const baseKey = this.buildRepoCacheKey({
+      githubLogin,
+      gitlabUserId: String(gitlabUserId),
+      gitlabBaseUrl,
+      limit,
+      includeGitHub,
+      includeGitLab,
+    });
+
+    const fresh = await this.cache.get<{ lastUpdated: Date; data: RepoItem[] }>(
+      `${baseKey}:fresh`,
+    );
+    if (fresh) return fresh;
+
+    const stale = await this.cache.get<{ lastUpdated: Date; data: RepoItem[] }>(
+      `${baseKey}:stale`,
+    );
+
+    // always return an object to keep controller/template simple
+    return (
+      stale ?? {
+        lastUpdated: new Date(0),
+        data: [],
+      }
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Blocking refresh (used by warmer/admin endpoints). Network happens here.
+  // ────────────────────────────────────────────────────────────────────────────
+
+  async refreshCombinedCalendarBlocking(params: GetCombinedParams): Promise<{
+    lastUpdated: Date;
+    data: CombinedDay[];
+  } | null> {
+    const {
+      githubLogin,
+      gitlabUserId,
+      gitlabBaseUrl = this.config.get<string>('GITLAB_BASE_URL') ??
+        'https://gitlab.com',
+      daysBack = 371,
+      ttlMs = 15 * 60 * 1000,
+      includeGitLab = true,
+      includeGitHub = true,
+    } = params;
+
+    if (!includeGitHub && !includeGitLab) return null;
+
+    const baseKey = this.buildCacheKey({
+      githubLogin,
+      gitlabUserId: String(gitlabUserId),
+      gitlabBaseUrl,
+      daysBack,
+      includeGitLab,
+      includeGitHub,
+    });
 
     // Compute time window
     const end = new Date();
@@ -158,7 +263,6 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
     const after = start.toISOString().slice(0, 10);
     const before = end.toISOString().slice(0, 10);
 
-    // Fetch both in parallel (as allowed by toggles)
     const [ghMap, glMap] = await Promise.all([
       includeGitHub
         ? this.fetchGitHubCalendarMap(githubLogin)
@@ -173,7 +277,6 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
         : Promise.resolve(new Map<string, number>()),
     ]);
 
-    // Merge into a continuous list of days (stable ordering)
     const merged: CombinedDay[] = [];
     for (let i = 0; i < daysBack; i++) {
       const d = new Date(start);
@@ -184,16 +287,77 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
       merged.push({ date, count });
     }
 
-    await this.cache.set(cacheKey, merged, ttlMs);
-    return merged;
+    const res = { lastUpdated: new Date(), data: merged };
+
+    // fresh: normal TTL
+    await this.cache.set(`${baseKey}:fresh`, res, ttlMs);
+
+    // stale: long TTL to survive refresh failures
+    const staleTtlMs = Math.max(ttlMs * 10, 6 * 60 * 60 * 1000);
+    await this.cache.set(`${baseKey}:stale`, res, staleTtlMs);
+
+    return res;
+  }
+
+  async refreshTopReposBlocking(params: {
+    githubLogin: string;
+    gitlabUserId: string | number;
+    gitlabBaseUrl?: string;
+    limit?: number;
+    ttlMs?: number;
+    includeGitHub?: boolean;
+    includeGitLab?: boolean;
+  }): Promise<{ lastUpdated: Date; data: RepoItem[] }> {
+    const {
+      githubLogin,
+      gitlabUserId,
+      gitlabBaseUrl = this.config.get<string>('GITLAB_BASE_URL') ??
+        'https://gitlab.com',
+      limit = 5,
+      ttlMs = 15 * 60 * 1000,
+      includeGitHub = true,
+      includeGitLab = true,
+    } = params;
+
+    const baseKey = this.buildRepoCacheKey({
+      githubLogin,
+      gitlabUserId: String(gitlabUserId),
+      gitlabBaseUrl,
+      limit,
+      includeGitHub,
+      includeGitLab,
+    });
+
+    const [gh, gl] = await Promise.all([
+      includeGitHub
+        ? this.fetchGitHubTopRepos(githubLogin, limit)
+        : Promise.resolve([]),
+      // TODO if you want GitLab repos later
+      Promise.resolve([] as RepoItem[]),
+    ]);
+
+    const merged = [...gh, ...gl].sort((a, b) => {
+      const da = Date.parse(a.updated_at);
+      const db = Date.parse(b.updated_at);
+      return (Number.isNaN(db) ? 0 : db) - (Number.isNaN(da) ? 0 : da);
+    });
+
+    const res = { lastUpdated: new Date(), data: merged.slice(0, limit) };
+
+    await this.cache.set(`${baseKey}:fresh`, res, ttlMs);
+
+    const staleTtlMs = Math.max(ttlMs * 10, 6 * 60 * 60 * 1000);
+    await this.cache.set(`${baseKey}:stale`, res, staleTtlMs);
+
+    return res;
   }
 
   /**
-   * call this from a controller to force-refresh.
+   * Optional: "admin force refresh" that clears cache then repopulates.
    */
-  async refreshCombinedCalendar(
+  async clearAndRefreshCombinedCalendarBlocking(
     params: GetCombinedParams,
-  ): Promise<CombinedDay[]> {
+  ): Promise<{ lastUpdated: Date; data: CombinedDay[] } | null> {
     const {
       githubLogin,
       gitlabUserId,
@@ -204,7 +368,7 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
       includeGitHub = true,
     } = params;
 
-    const cacheKey = this.buildCacheKey({
+    const baseKey = this.buildCacheKey({
       githubLogin,
       gitlabUserId: String(gitlabUserId),
       gitlabBaseUrl,
@@ -213,13 +377,35 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
       includeGitHub,
     });
 
-    await this.cache.del(cacheKey);
-    return this.getCombinedCalendar(params);
+    await Promise.all([
+      this.cache.del(`${baseKey}:fresh`),
+      this.cache.del(`${baseKey}:stale`),
+    ]);
+
+    return this.refreshCombinedCalendarBlocking(params);
   }
 
-  // -------------------------
+  // ────────────────────────────────────────────────────────────────────────────
+  // Network helpers with hard timeouts
+  // ────────────────────────────────────────────────────────────────────────────
+
+  private async fetchWithTimeout(
+    input: RequestInfo | URL,
+    init: RequestInit,
+    timeoutMs: number,
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(input, { ...init, signal: controller.signal });
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
   // GitHub (GraphQL)
-  // -------------------------
+  // ────────────────────────────────────────────────────────────────────────────
 
   private readonly ghQuery = `
     query($login: String!) {
@@ -249,17 +435,30 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
       return new Map();
     }
 
-    const resp = await fetch('https://api.github.com/graphql', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        query: this.ghQuery,
-        variables: { login },
-      }),
-    });
+    let resp: Response;
+    try {
+      resp = await this.fetchWithTimeout(
+        'https://api.github.com/graphql',
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            query: this.ghQuery,
+            variables: { login },
+          }),
+        },
+        20000,
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.warn(
+        `GitHub GraphQL request failed (timeout/network): ${msg}`,
+      );
+      return new Map();
+    }
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
@@ -269,19 +468,13 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
       return new Map();
     }
 
-    type GhContributionDay = {
-      date: string;
-      contributionCount: number;
-    };
-
+    type GhContributionDay = { date: string; contributionCount: number };
     type GhResponse = {
       data?: {
         user?: {
           contributionsCollection?: {
             contributionCalendar?: {
-              weeks?: Array<{
-                contributionDays?: GhContributionDay[];
-              }>;
+              weeks?: Array<{ contributionDays?: GhContributionDay[] }>;
             };
           };
         };
@@ -289,20 +482,22 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
       errors?: Array<{ message?: string }>;
     };
 
-    function isGhResponse(x: unknown): x is GhResponse {
-      return typeof x === 'object' && x !== null;
+    const jsonUnknown = (await resp.json()) as unknown;
+    if (typeof jsonUnknown !== 'object' || jsonUnknown === null) {
+      this.logger.warn('GitHub response was not an object');
+      return new Map();
     }
 
-    const jsonUnknown = (await resp.json()) as unknown;
+    const json = jsonUnknown as GhResponse;
 
-    if (!isGhResponse(jsonUnknown)) {
-      this.logger.warn('GitHub response was not an object');
-      return new Map<string, number>();
+    if (Array.isArray(json.errors) && json.errors.length) {
+      const first = json.errors[0]?.message ?? 'Unknown GitHub GraphQL error';
+      this.logger.warn(`GitHub GraphQL errors: ${first}`);
     }
 
     const weeks =
-      jsonUnknown.data?.user?.contributionsCollection?.contributionCalendar
-        ?.weeks ?? [];
+      json.data?.user?.contributionsCollection?.contributionCalendar?.weeks ??
+      [];
     const days = weeks.flatMap((w) => w.contributionDays ?? []);
 
     const map = new Map<string, number>();
@@ -313,15 +508,15 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
     return map;
   }
 
-  // -------------------------
+  // ────────────────────────────────────────────────────────────────────────────
   // GitLab (Events API)
-  // -------------------------
+  // ────────────────────────────────────────────────────────────────────────────
 
   private async fetchGitLabCountsMap(args: {
     gitlabBaseUrl: string;
     gitlabUserId: string | number;
-    after: string; // YYYY-MM-DD
-    before: string; // YYYY-MM-DD
+    after: string;
+    before: string;
   }): Promise<Map<string, number>> {
     const token = this.config.get<string>('GITLAB_TOKEN');
     if (!token) {
@@ -337,8 +532,11 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
     const perPage = 100;
     let page = 1;
 
-    // GitLab pagination via X-Next-Page header (preferred)
+    const maxPages = 100;
+
     while (true) {
+      if (page > maxPages) break;
+
       const url = new URL(
         `${gitlabBaseUrl.replace(/\/$/, '')}/api/v4/users/${gitlabUserId}/events`,
       );
@@ -347,12 +545,22 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
       url.searchParams.set('per_page', String(perPage));
       url.searchParams.set('page', String(page));
 
-      const resp = await fetch(url, {
-        headers: {
-          // GitLab supports PRIVATE-TOKEN, or Authorization: Bearer <token> for OAuth tokens.
-          'PRIVATE-TOKEN': token,
-        },
-      });
+      let resp: Response;
+      try {
+        resp = await this.fetchWithTimeout(
+          url,
+          {
+            headers: {
+              'PRIVATE-TOKEN': token,
+            },
+          },
+          20000,
+        );
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        this.logger.warn(`GitLab request failed (timeout/network): ${msg}`);
+        break;
+      }
 
       if (!resp.ok) {
         const text = await resp.text().catch(() => '');
@@ -372,90 +580,23 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
       const next = resp.headers.get('x-next-page');
       if (!next) break;
 
-      page = Number(next);
-      if (!Number.isFinite(page) || page <= 0) break;
+      const nextPage = Number(next);
+      if (!Number.isFinite(nextPage) || nextPage <= 0) break;
+      page = nextPage;
     }
 
     return map;
   }
 
-  // -------------------------
-  // Cache key helper
-  // -------------------------
-
-  private buildCacheKey(x: {
-    githubLogin: string;
-    gitlabUserId: string;
-    gitlabBaseUrl: string;
-    daysBack: number;
-    includeGitLab: boolean;
-    includeGitHub: boolean;
-  }): string {
-    return [
-      'gitcal:v1',
-      `gh=${x.includeGitHub ? x.githubLogin : 'off'}`,
-      `gl=${x.includeGitLab ? x.gitlabUserId : 'off'}`,
-      `base=${x.gitlabBaseUrl}`,
-      `days=${x.daysBack}`,
-    ].join('|');
-  }
-
-  async getTopRepos(params: {
-    githubLogin: string;
-    gitlabUserId: string | number;
-    gitlabBaseUrl?: string;
-    limit?: number; // default 5
-    ttlMs?: number; // default 30 min
-    includeGitHub?: boolean;
-    includeGitLab?: boolean;
-  }): Promise<RepoItem[]> {
-    const {
-      githubLogin,
-      gitlabUserId,
-      gitlabBaseUrl = this.config.get<string>('GITLAB_BASE_URL') ??
-        'https://gitlab.com',
-      limit = 5,
-      ttlMs = 30 * 60 * 1000,
-      includeGitHub = true,
-      includeGitLab = true,
-    } = params;
-
-    const cacheKey = [
-      'gitcal:v1:repos',
-      `gh=${includeGitHub ? githubLogin : 'off'}`,
-      `gl=${includeGitLab ? String(gitlabUserId) : 'off'}`,
-      `base=${gitlabBaseUrl}`,
-      `limit=${limit}`,
-    ].join('|');
-
-    const cached = await this.cache.get<RepoItem[]>(cacheKey);
-    if (cached?.length) return cached;
-
-    const [gh, gl] = await Promise.all([
-      includeGitHub
-        ? this.fetchGitHubTopRepos(githubLogin, limit)
-        : Promise.resolve([]),
-      Promise.resolve([]),
-    ]);
-
-    // Merge + sort by updated_at desc
-    const merged = [...gh, ...gl].sort((a, b) => {
-      const da = Date.parse(a.updated_at);
-      const db = Date.parse(b.updated_at);
-      return (Number.isNaN(db) ? 0 : db) - (Number.isNaN(da) ? 0 : da);
-    });
-
-    const result = merged.slice(0, limit);
-    await this.cache.set(cacheKey, result, ttlMs);
-    return result;
-  }
+  // ────────────────────────────────────────────────────────────────────────────
+  // GitHub Repos (REST)
+  // ────────────────────────────────────────────────────────────────────────────
 
   private async fetchGitHubTopRepos(
     login: string,
     limit: number,
   ): Promise<RepoItem[]> {
     const token = this.config.get<string>('GITHUB_TOKEN');
-    // GitHub REST can work without token for public repos, but token helps with rate limits.
     const headers: Record<string, string> = token
       ? { Authorization: `Bearer ${token}` }
       : {};
@@ -467,7 +608,15 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
     url.searchParams.set('direction', 'desc');
     url.searchParams.set('per_page', String(Math.min(limit, 100)));
 
-    const resp = await fetch(url, { headers });
+    let resp: Response;
+    try {
+      resp = await this.fetchWithTimeout(url, { headers }, 15000);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`GitHub repos request failed (timeout/network): ${msg}`);
+      return [];
+    }
+
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
       this.logger.warn(
@@ -485,22 +634,60 @@ export class GitCalendarService implements OnModuleInit, OnModuleDestroy {
         const o = r as Record<string, unknown>;
 
         const name = typeof o.name === 'string' ? o.name : null;
-        const url = typeof o.html_url === 'string' ? o.html_url : null;
+        const urlStr = typeof o.html_url === 'string' ? o.html_url : null;
         const updatedAt =
           typeof o.updated_at === 'string' ? o.updated_at : null;
         const language = typeof o.language === 'string' ? o.language : null;
 
-        if (!name || !url || !updatedAt) return null;
+        if (!name || !urlStr || !updatedAt) return null;
 
         return {
           name,
-          url,
+          url: urlStr,
           updated_at: updatedAt,
           language,
           source: 'github',
         };
       })
-      .filter((v) => v != null)
+      .filter((v): v is RepoItem => v != null)
       .slice(0, limit);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Cache key helpers
+  // ────────────────────────────────────────────────────────────────────────────
+
+  private buildCacheKey(x: {
+    githubLogin: string;
+    gitlabUserId: string;
+    gitlabBaseUrl: string;
+    daysBack: number;
+    includeGitLab: boolean;
+    includeGitHub: boolean;
+  }): string {
+    return [
+      'gitcal:v3',
+      `gh=${x.includeGitHub ? x.githubLogin : 'off'}`,
+      `gl=${x.includeGitLab ? x.gitlabUserId : 'off'}`,
+      `base=${x.gitlabBaseUrl}`,
+      `days=${x.daysBack}`,
+    ].join('|');
+  }
+
+  private buildRepoCacheKey(x: {
+    githubLogin: string;
+    gitlabUserId: string;
+    gitlabBaseUrl: string;
+    limit: number;
+    includeGitLab: boolean;
+    includeGitHub: boolean;
+  }): string {
+    return [
+      'gitcal:v3:repos',
+      `gh=${x.includeGitHub ? x.githubLogin : 'off'}`,
+      `gl=${x.includeGitLab ? x.gitlabUserId : 'off'}`,
+      `base=${x.gitlabBaseUrl}`,
+      `limit=${x.limit}`,
+    ].join('|');
   }
 }

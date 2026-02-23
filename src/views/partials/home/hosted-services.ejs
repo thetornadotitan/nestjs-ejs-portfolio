@@ -1,3 +1,16 @@
+<%
+  const hs = hostedServices || { public: [], private: [], generatedAt: null };
+  const pub = hs.public || [];
+  const priv = hs.private || [];
+
+  function dotClass(health) {
+    if (health === 'up') return 'bg-emerald-500';
+    if (health === 'degraded') return 'bg-amber-500';
+    if (health === 'down') return 'bg-rose-500';
+    return 'bg-slate-400';
+  }
+%>
+
 <div
   class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
 >
@@ -6,88 +19,65 @@
 
     <span
       class="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-[var(--muted)]"
-      title="Example data"
+      title="Live snapshot"
     >
       <span
         class="inline-block h-2 w-2 rounded-full bg-emerald-500"
         aria-hidden="true"
       ></span>
-      Live snapshot
+      <span>
+        Updated:
+        <% if (hs.generatedAt) { %>
+        <%= new Intl.DateTimeFormat('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            }).format(new Date(hs.generatedAt)) %>
+        <% } %>
+      </span>
     </span>
   </div>
+
+  <!-- Tooltip shell (anchored popup) -->
+  <div
+    id="hosted-services-tooltip"
+    class="z-50 max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-lg"
+    aria-hidden="true"
+  ></div>
 
   <!-- Public -->
   <div class="mt-4">
     <div class="text-xs sm:text-sm font-medium text-[var(--muted)]">Public</div>
 
-    <div class="mt-2 space-y-2">
-      <!-- Public service 1 -->
-      <div
-        class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4"
+    <% if (!pub.length) { %>
+    <p class="mt-2 text-sm text-[var(--muted)]">No public services found.</p>
+    <% } else { %>
+    <div class="mt-2 flex flex-wrap gap-2">
+      <% pub.forEach((svc) => { %>
+      <button
+        type="button"
+        class="hs-chip inline-flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-sm font-medium text-[var(--text)] shadow-sm active:scale-[0.99]"
+        style="min-height: 44px"
+        aria-label="<%= svc.name %> service details"
       >
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <div class="font-medium text-[var(--text)]">Docs API</div>
-              <a
-                href="https://docs.example.com"
-                class="text-sm text-[var(--muted)] underline underline-offset-4 hover:text-[var(--text)]"
-                >docs.example.com</a
-              >
-            </div>
+        <span class="truncate max-w-[14rem] sm:max-w-[18rem]"
+          ><%= svc.name %></span
+        >
+        <span
+          class="inline-block h-2.5 w-2.5 rounded-full <%= dotClass(svc.health) %>"
+          aria-hidden="true"
+        ></span>
 
-            <p class="mt-1 text-sm text-[var(--muted)] leading-relaxed">
-              Public documentation and status endpoints for tools hosted in the
-              stack.
-            </p>
-          </div>
-
-          <div
-            class="shrink-0 inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--muted)]"
-            title="Online"
-          >
-            <span
-              class="inline-block h-2 w-2 rounded-full bg-emerald-500"
-              aria-hidden="true"
-            ></span>
-            Online
-          </div>
-        </div>
-      </div>
-
-      <!-- Public service 2 -->
-      <div
-        class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4"
-      >
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <div class="font-medium text-[var(--text)]">Image Toolkit</div>
-              <a
-                href="https://tools.example.com"
-                class="text-sm text-[var(--muted)] underline underline-offset-4 hover:text-[var(--text)]"
-                >tools.example.com</a
-              >
-            </div>
-
-            <p class="mt-1 text-sm text-[var(--muted)] leading-relaxed">
-              Small public utilities for image processing and content prep.
-            </p>
-          </div>
-
-          <div
-            class="shrink-0 inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--muted)]"
-            title="Degraded"
-          >
-            <span
-              class="inline-block h-2 w-2 rounded-full bg-amber-500"
-              aria-hidden="true"
-            ></span>
-            Degraded
-          </div>
-        </div>
-      </div>
+        <script type="application/json" class="hs-data">
+          <%- JSON.stringify(svc) %>
+        </script>
+      </button>
+      <% }) %>
     </div>
+    <% } %>
   </div>
 
   <!-- Private -->
@@ -96,57 +86,32 @@
       Private
     </div>
 
-    <div class="mt-2 space-y-2">
-      <!-- Private service 1 -->
-      <div
-        class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4"
+    <% if (!priv.length) { %>
+    <p class="mt-2 text-sm text-[var(--muted)]">No private services found.</p>
+    <% } else { %>
+    <div class="mt-2 flex flex-wrap gap-2">
+      <% priv.forEach((svc) => { %>
+      <button
+        type="button"
+        class="hs-chip inline-flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-sm font-medium text-[var(--text)] shadow-sm active:scale-[0.99]"
+        style="min-height: 44px"
+        aria-label="<%= svc.name %> service details"
       >
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="font-medium text-[var(--text)]">Portainer</div>
-            <p class="mt-1 text-sm text-[var(--muted)] leading-relaxed">
-              Container management UI for monitoring, logs, and stack control.
-            </p>
-          </div>
+        <span class="truncate max-w-[14rem] sm:max-w-[18rem]"
+          ><%= svc.name %></span
+        >
+        <span
+          class="inline-block h-2.5 w-2.5 rounded-full <%= dotClass(svc.health) %>"
+          aria-hidden="true"
+        ></span>
 
-          <div
-            class="shrink-0 inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--muted)]"
-            title="Online"
-          >
-            <span
-              class="inline-block h-2 w-2 rounded-full bg-emerald-500"
-              aria-hidden="true"
-            ></span>
-            Online
-          </div>
-        </div>
-      </div>
-
-      <!-- Private service 2 -->
-      <div
-        class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4"
-      >
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="font-medium text-[var(--text)]">AdGuard</div>
-            <p class="mt-1 text-sm text-[var(--muted)] leading-relaxed">
-              Network-wide DNS control and filtering for local domains.
-            </p>
-          </div>
-
-          <div
-            class="shrink-0 inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--muted)]"
-            title="Offline"
-          >
-            <span
-              class="inline-block h-2 w-2 rounded-full bg-rose-500"
-              aria-hidden="true"
-            ></span>
-            Offline
-          </div>
-        </div>
-      </div>
+        <script type="application/json" class="hs-data">
+          <%- JSON.stringify(svc) %>
+        </script>
+      </button>
+      <% }) %>
     </div>
+    <% } %>
 
     <p class="mt-3 text-xs text-[var(--muted)]">
       Private services are accessible only from my internal network or VPN.

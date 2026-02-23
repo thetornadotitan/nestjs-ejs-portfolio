@@ -2,6 +2,7 @@ import { Controller, Get, Render, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { GitCalendarService } from '../git-calendar/git-calendar.service';
 import { ConfigService } from '@nestjs/config';
+import { CatalogService } from '../catalog/catalog.service';
 
 @Controller()
 export class PortfolioController {
@@ -10,6 +11,7 @@ export class PortfolioController {
   constructor(
     private readonly gitCal: GitCalendarService,
     private readonly config: ConfigService,
+    private readonly catalog: CatalogService,
   ) {}
 
   @Get('/')
@@ -19,7 +21,7 @@ export class PortfolioController {
     const gitlabUserId = this.config.get<string>('GITLAB_USER_ID') ?? '';
     const gitlabBaseUrl = this.config.get<string>('GITLAB_BASE_URL') ?? '';
 
-    const [contributions, repos] = await Promise.all([
+    const [contributions, repos, hostedServices] = await Promise.all([
       this.gitCal.getCombinedCalendar({
         githubLogin,
         gitlabUserId,
@@ -32,6 +34,7 @@ export class PortfolioController {
         gitlabBaseUrl,
         limit: 5,
       }),
+      this.catalog.getHostedServices(),
     ]);
 
     return {
@@ -43,12 +46,14 @@ export class PortfolioController {
       headJs: `
       <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
       <script type="module" defer src="/js/stack.js"></script>
+      <script type="module" defer src="/js/hosted-service.js"></script>
     `,
       github: {
         profileUrl: `https://github.com/${githubLogin}`,
         contributions,
         repos,
       },
+      hostedServices,
     };
   }
 

@@ -5,6 +5,7 @@ import { addPopGlowWithTooltip } from './utils/glowWithTooltip.js';
 import { hideAllPaths } from './utils/hideAllPaths.js';
 
 export function createWebRequestAnim(tooltip) {
+  hideAllPaths(undefined, { resetDraw: true });
   const tl = gsap.timeline({ paused: true });
 
   tl.call(() => hideAllPaths(), null, 0);
