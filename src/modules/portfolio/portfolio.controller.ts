@@ -47,6 +47,7 @@ export class PortfolioController {
       <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
       <script type="module" defer src="/js/stack.js"></script>
       <script type="module" defer src="/js/hosted-service.js"></script>
+      <script type="module" defer src="/js/heatmap-scale.js"></script>
     `,
       github: {
         profileUrl: `https://github.com/${githubLogin}`,

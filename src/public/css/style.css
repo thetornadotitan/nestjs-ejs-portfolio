@@ -37,3 +37,31 @@
 .preload * {
   transition: none !important;
 }
+
+.heatmap-scale {
+  display: inline-block;
+  width: max-content;
+  transform: scale(var(--heatmap-scale, 1));
+  transform-origin: top left;
+}
+
+/* Optional: if you want to *prevent* horizontal scroll entirely */
+.heatmap-no-scroll {
+  overflow-x: hidden; /* overrides overflow-x-auto if you replace it */
+}
+
+/* Tiny breakpoint toggle (Tailwind doesn't have xs by default) */
+.heatmap-only-tiny {
+  display: none;
+}
+
+/* Choose your "tiny" cutoff:
+   360px catches iPhone SE-ish widths in portrait. */
+@media (max-width: 360px) {
+  .heatmap-hide-on-tiny {
+    display: none !important;
+  }
+  .heatmap-only-tiny {
+    display: block !important;
+  }
+}

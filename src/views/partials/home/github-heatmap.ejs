@@ -1,0 +1,42 @@
+<div class="overflow-x-hidden" data-heatmap-container>
+  <div class="mx-auto w-full">
+    <div class="heatmap-scale" data-heatmap-scale>
+      <div
+        class="inline-grid gap-1.5"
+        style="<%= model.gridStyle %>"
+        data-heatmap-grid
+      >
+        <div></div>
+
+        <% for (let w = 0; w < model.weeks.length; w++) { %>
+        <div class="h-4 text-[11px] leading-4 text-[var(--muted)]">
+          <% let label = ''; for (let i = 0; i < model.monthLabels.length; i++)
+          { if (model.monthLabels[i].index === w) { label =
+          model.monthLabels[i].label; break; } } %> <%= label %>
+        </div>
+        <% } %>
+
+        <% for (let r = 0; r < 7; r++) { %>
+        <div
+          class="h-3 text-[11px] leading-3 text-[var(--muted)] flex items-center"
+        >
+          <% let dl = ''; for (let i = 0; i < dayLabels.length; i++) { if
+          (dayLabels[i].row === r) { dl = dayLabels[i].label; break; } } %>
+          <%=
+          dl %>
+        </div>
+
+        <% for (let w = 0; w < model.weeks.length; w++) { const dt =
+        model.weeks[w][r]; const isoKey = fmtISO(dt); const c =
+        byDate.has(isoKey) ? byDate.get(isoKey) : 0; const l = level(c); const
+        inRange = dt >= model.first && dt <= model.last; %>
+        <div
+          title="<%= fmtDate(dt) %>: <%= c %>"
+          class="h-[11px] w-[11px] rounded-[3px] border border-[var(--border)] <%= !inRange ? 'opacity-40' : '' %> <%= l === 0 ? 'bg-[var(--surface-2)]' : '' %> <%= l === 1 ? 'bg-blue-200 dark:bg-blue-900/40' : '' %> <%= l === 2 ? 'bg-blue-300 dark:bg-blue-800/50' : '' %> <%= l === 3 ? 'bg-blue-400 dark:bg-blue-700/60' : '' %> <%= l === 4 ? 'bg-blue-600 dark:bg-blue-500/70' : '' %>"
+        ></div>
+        <% } %>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>

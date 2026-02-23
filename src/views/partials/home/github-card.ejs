@@ -1,15 +1,15 @@
-<div
-  class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
->
-  <% const toDate = (v) => { if (!v) return null; const d = v instanceof Date ?
-  v : new Date(v); return Number.isNaN(d.getTime()) ? null : d; }; const
-  fmtDateTime = (v) => { const d = toDate(v); if (!d) return ''; return new
-  Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year:
-  'numeric', hour: '2-digit', minute: '2-digit', hour12: false, }).format(d); };
-  const fmtDate = (v) => { const d = toDate(v); if (!d) return ''; return new
-  Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year:
-  'numeric', }).format(d); }; %>
+<% const toDate = (v) => { if (!v) return null; const d = v instanceof Date ? v
+: new Date(v); return Number.isNaN(d.getTime()) ? null : d; }; const fmtDateTime
+= (v) => { const d = toDate(v); if (!d) return ''; return new
+Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric',
+hour: '2-digit', minute: '2-digit', hour12: false, }).format(d); }; const
+fmtDate = (v) => { const d = toDate(v); if (!d) return ''; return new
+Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric',
+}).format(d); }; %>
 
+<div
+  class="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm"
+>
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="min-w-0">
       <h2 class="font-medium">GitHub</h2>
@@ -18,6 +18,7 @@
         repos from Github.
       </p>
     </div>
+
     <span
       class="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-[var(--muted)]"
       title="Live data (cached server-side)"
@@ -33,13 +34,18 @@
 
   <div class="mt-4 grid gap-4 lg:grid-cols-3">
     <div
-      class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4 lg:col-span-2"
+      class="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4 lg:col-span-2"
     >
       <div class="flex items-center justify-between gap-3">
         <div class="text-xs sm:text-sm font-medium text-[var(--muted)]">
           Contributions
         </div>
-        <% const profileUrl=(locals.github && locals.github.profileUrl) ? locals.github.profileUrl : '' ; const profileDisabled=!profileUrl; %>
+
+        <%
+          const profileUrl = (locals.github && locals.github.profileUrl) ? locals.github.profileUrl : '';
+          const profileDisabled = !profileUrl;
+        %>
+
         <a
           href="<%= profileUrl || '#' %>"
           target="_blank"
@@ -71,8 +77,11 @@
         typeof d.count === 'number' ? d.count : 0), 0); const level = (count) =>
         { if (!max || count <= 0) return 0; if (count < max * 0.25) return 1; if
         (count < max * 0.5) return 2; if (count < max * 0.75) return 3; return
-        4; }; let weeks = []; let monthLabels = []; let first = null; let last =
-        null; const WINDOW_DAYS = 183; if (hasData) { last =
+        4; }; const dayLabels = [ { row: 1, label: 'Mon' }, { row: 3, label:
+        'Wed' }, { row: 5, label: 'Fri' }, ]; const buildHeatmapModel =
+        (WINDOW_DAYS, COL_PX = 14) => { let weeks = []; let monthLabels = [];
+        let first = null; let last = null; if (!hasData) return { weeks,
+        monthLabels, first, last, gridStyle: '' }; last =
         parseDate(sorted[sorted.length - 1].date); first = addDays(last,
         -(WINDOW_DAYS - 1)); const start = addDays(first, -first.getUTCDay());
         const end = addDays(last, 6 - last.getUTCDay()); for (let cursor = new
@@ -81,77 +90,68 @@
         weeks.push(days); } let prevMonth = null; for (let w = 0; w <
         weeks.length; w++) { const m = weeks[w][0].getUTCMonth(); if (m !==
         prevMonth) { monthLabels.push({ index: w, label: monthShort(weeks[w][0])
-        }); prevMonth = m; } } } const dayLabels = [ { row: 1, label: 'Mon' }, {
-        row: 3, label: 'Wed' }, { row: 5, label: 'Fri' }, ]; const gridStyle =
-        `grid-template-columns: 24px repeat(${weeks.length}, 14px);`; %> <% if
-        (hasData) { %>
+        }); prevMonth = m; } } const gridStyle = `grid-template-columns: 24px
+        repeat(${weeks.length}, ${COL_PX}px);`; return { weeks, monthLabels,
+        first, last, gridStyle }; }; const desktopModel = buildHeatmapModel(183,
+        14); const mobileModel = buildHeatmapModel(90, 12); const tinyModel =
+        buildHeatmapModel(30, 12); %> <% if (hasData) { %>
         <div
-          class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"
+          class="hidden sm:block rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"
         >
-          <div class="overflow-x-auto">
-            <div class="min-w-max w-fit mx-auto">
-              <div class="inline-grid gap-1.5" style="<%= gridStyle %>">
-                <div></div>
-
-                <% for (let w=0; w < weeks.length; w++) { %>
-                <div class="h-4 text-[11px] leading-4 text-[var(--muted)]">
-                  <% let label = ''; for (let i=0; i < monthLabels.length; i++)
-                  { if (monthLabels[i].index === w) { label =
-                  monthLabels[i].label; break; } } %> <%= label %>
-                </div>
-                <% } %>
-
-                <% for (let r=0; r < 7; r++) { %>
-                <div
-                  class="h-3 text-[11px] leading-3 text-[var(--muted)] flex items-center"
-                >
-                  <% let dl = ''; for (let i=0; i < dayLabels.length; i++) { if
-                  (dayLabels[i].row === r) { dl = dayLabels[i].label; break; } }
-                  %>
-                  <%= dl %>
-                </div>
-
-                <% for (let w=0; w < weeks.length; w++) { const dt =
-                weeks[w][r]; const isoKey = fmtISO(dt); const c =
-                byDate.has(isoKey) ? byDate.get(isoKey) : 0; const l = level(c);
-                const inRange = dt >= first && dt <= last; %>
-                <div
-                  title="<%= fmtDate(dt) %>: <%= c %>"
-                  class="h-[11px] w-[11px] rounded-[3px] border border-[var(--border)] <%= !inRange ? 'opacity-40' : '' %> <%= l === 0 ? 'bg-[var(--surface-2)]' : '' %> <%= l === 1 ? 'bg-blue-200 dark:bg-blue-900/40' : '' %> <%= l === 2 ? 'bg-blue-300 dark:bg-blue-800/50' : '' %> <%= l === 3 ? 'bg-blue-400 dark:bg-blue-700/60' : '' %> <%= l === 4 ? 'bg-blue-600 dark:bg-blue-500/70' : '' %>"
-                ></div>
-                <% } %>
-                <% } %>
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="mt-3 flex items-center justify-between text-xs text-[var(--muted)]"
-          >
-            <span>Less</span>
-            <div class="flex items-center gap-1">
-              <span
-                class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-[var(--surface-2)]"
-              ></span>
-              <span
-                class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-blue-200 dark:bg-blue-900/40"
-              ></span>
-              <span
-                class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-blue-300 dark:bg-blue-800/50"
-              ></span>
-              <span
-                class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-blue-400 dark:bg-blue-700/60"
-              ></span>
-              <span
-                class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-blue-600 dark:bg-blue-500/70"
-              ></span>
-            </div>
-            <span>More</span>
-          </div>
+          <%- include('./github-heatmap', { model: desktopModel,
+          byDate, fmtISO, fmtDate, level, dayLabels }) %>
         </div>
 
-        <p class="mt-2 text-xs text-[var(--muted)]">
+        <div
+          class="sm:hidden heatmap-hide-on-tiny rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"
+        >
+          <%- include('./github-heatmap', { model: mobileModel,
+          byDate, fmtISO, fmtDate, level, dayLabels }) %>
+        </div>
+
+        <div
+          class="sm:hidden heatmap-only-tiny rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"
+        >
+          <%- include('./github-heatmap', { model: tinyModel, byDate,
+          fmtISO, fmtDate, level, dayLabels }) %>
+        </div>
+
+        <div
+          class="mt-3 flex items-center justify-between text-xs text-[var(--muted)]"
+        >
+          <span>Less</span>
+          <div class="flex items-center gap-1">
+            <span
+              class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-[var(--surface-2)]"
+            ></span>
+            <span
+              class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-blue-200 dark:bg-blue-900/40"
+            ></span>
+            <span
+              class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-blue-300 dark:bg-blue-800/50"
+            ></span>
+            <span
+              class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-blue-400 dark:bg-blue-700/60"
+            ></span>
+            <span
+              class="h-3 w-3 rounded-[3px] border border-[var(--border)] bg-blue-600 dark:bg-blue-500/70"
+            ></span>
+          </div>
+          <span>More</span>
+        </div>
+
+        <p class="mt-2 text-xs text-[var(--muted)] hidden sm:block">
           Combined GitHub + GitLab activity (last 6 months).
+        </p>
+
+        <p
+          class="mt-2 text-xs text-[var(--muted)] sm:hidden heatmap-hide-on-tiny"
+        >
+          Combined GitHub + GitLab activity (last 3 months).
+        </p>
+
+        <p class="mt-2 text-xs text-[var(--muted)] sm:hidden heatmap-only-tiny">
+          Combined GitHub + GitLab activity (last 30 days).
         </p>
         <% } else { %>
         <div
@@ -171,7 +171,7 @@
     </div>
 
     <div
-      class="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4"
+      class="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4"
     >
       <div class="flex items-center justify-between gap-3">
         <div class="text-xs sm:text-sm font-medium text-[var(--muted)]">
@@ -181,19 +181,19 @@
       </div>
 
       <div class="mt-3 space-y-2">
-        <% const repos=(locals.github && locals.github?.repos?.data) ?
+        <% const repos = (locals.github && locals.github?.repos?.data) ?
         locals.github?.repos?.data : null; %> <% if (repos && repos.length) { %>
-        <% repos.slice(0, 5).forEach((r)=> { const isDisabled = !r.url; %>
+        <% repos.slice(0, 5).forEach((r) => { const isDisabled = !r.url; %>
         <a
           href="<%= r.url || '#' %>"
           target="_blank"
-          class="block rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:bg-[var(--surface-2)] <%= isDisabled ? 'pointer-events-none opacity-60' : '' %>"
+          class="block rounded-xl w-full min-w-0 border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:bg-[var(--surface-2)] <%= isDisabled ? 'pointer-events-none opacity-60' : '' %>"
           aria-disabled="<%= isDisabled ? 'true' : 'false' %>"
           tabindex="<%= isDisabled ? '-1' : '0' %>"
         >
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="truncate font-medium text-[var(--text)]">
+          <div class="flex items-start justify-between gap-3 min-w-0">
+            <div class="flex-1 min-w-0">
+              <div class="w-full truncate font-medium text-[var(--text)]">
                 <%= r.name %>
               </div>
 
@@ -214,7 +214,6 @@
           </div>
         </a>
         <% }) %>
-
         <% } else { %>
         <% for (let i=0; i < 5; i++) { %>
         <div
