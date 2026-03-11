@@ -68,7 +68,7 @@ export class CatalogService {
     // You said use this for now:
     return (
       this.config.get<string>('CATALOG_URL') ||
-      'http://192.168.0.150/hh/catalog/services' 
+      'http://192.168.0.150/hh/catalog/services'
     );
   }
 
